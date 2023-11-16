@@ -85,3 +85,74 @@ def openfile(name):
             else:
                 raise Exception("Not an int or float at arr[{i}][{j}]".format(i=i, j=j))
     return arr
+
+#convert to pandas dataframe
+import pandas as pd
+import numpy as np
+
+def to_df(run):
+    df_col = ["run", "evt", "tInRun", "tBetweenEvents", "nPulses", "nCh1Pulses", "nCh2Pulses", "RMS1", "RMS2", "Ped1", "Ped2",
+         "Area1a", "Area1b", "Area1c", "Area1d", "Area2a", "Area2b", "Area2c", "Area2d", "chan", "ipulse", "t",
+         "A", "V", "width", "E", "dt", "dtOther", "coinc", "qual"]
+    return pd.DataFrame(run, columns = df_col)
+#show dataframe (df is the name)
+#display(df)
+
+#change channel number
+def changeCh(df, ch_ori, ch_new):
+    df.loc[df['chan'] == ch_ori, ["chan"]] = ch_new
+
+#combine df
+df = pd.concat([df_1, df_2])
+
+#sort
+df = df.sort_values(by = ["tInRun", "chan"])
+
+#reset index if they are off order after concat
+df = df.reset_index(drop=True)
+
+#select by row and coloum
+##return a dataframe
+df.loc[0:4, ["tInRun"]]
+##return a series
+df.loc[0:4, "tInRun"]
+
+#get number of row
+df.shape[0]
+
+#get value at specific row and col
+df.at[6, "tInRun"] #[row ind, column name]
+
+#check 4 Ch Coinc
+##change coinc to 1 if hit all 4 channel, and to 0 if not
+##given that by sorting run time, 4 hit of same event will be in consecutive order
+##with time difference smaller than (?)
+count = 0
+df_1.loc[:,["coinc"]] = 0
+ind = 0
+err = 0.05
+while ind < df_1.shape[0]-3:
+    t = df_1.at[ind, "tInRun"]
+    t_dif = [abs(t-df_1.at[ind+1, "tInRun"]), abs(t-df_1.at[ind+2, "tInRun"]), abs(t-df_1.at[ind+3, "tInRun"])]
+    Ch_set = {df_1.at[ind, "chan"], df_1.at[ind+1, "chan"], df_1.at[ind+2, "chan"], df_1.at[ind+3, "chan"]}
+    if Ch_set == {1,2,3,4} and max(t_dif) <= err:
+        df_1.loc[ind:ind+3,["coinc"]] = 1
+        ind += 4
+    else:
+        ind += 1
+        count +=1
+print("There are {} 4Ch coinc hit, {} hit only trigger 3 or less channel".format(df_1.shape[0]-count, count))
+
+#Sample Plotting Histogram
+plt.hist(Ch4_h, bins = 220)
+plt.xlim((-10,240))
+plt.ylim((0,500))
+plt.xlabel("Height of pulse (in ADC counts)")
+plt.ylabel("frequency")
+plt.savefig("Channel 4 Pulse Height(y_cutoff).png", dpi=300)
+
+#Sample Plotting Scatter Plot
+plt.scatter(Ch1.loc[:,["V"]], Ch4.loc[:,["V"]])
+plt.xlabel("Ch1 Pulse Height")
+plt.ylabel("Ch4 Pulse Height")
+plt.savefig("Pulse Height Ch1 vs Ch4.png", dpi=300)
